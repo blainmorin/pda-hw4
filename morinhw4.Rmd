@@ -1,0 +1,134 @@
+---
+title: "PHP 2550 HW #4"
+author: "Blain Morin"
+date: "November 9, 2018"
+output: pdf_document
+header-includes:
+- \usepackage{float}
+---
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+
+### Load libraries
+library(knitr)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(extrafont)
+library(stargazer)
+library(extrafontdb)
+library(grid)
+library(gridExtra)
+
+
+### Load data
+wells = read.table("wells.txt")
+
+```
+
+
+#1a. Construct a good logistic regression model predicting the decision to switch wells as a function of the 4 predictors (arsenic, distance, association and education) on the training data. Consider potential transformations of continuous variables and possible interactions.
+
+```{r, echo = FALSE, results = 'asis'}
+
+### Summary Table
+
+stargazer(wells, 
+          header = FALSE, 
+          title = "Summary Statistics",
+          table.placement = "H",
+          covariate.labels = c("Switched Wells",
+                               "Arsenic Level",
+                               "Distance",
+                               "Active in Community = 1",
+                               "Years of Education"))
+
+
+```
+
+
+```{r, echo = FALSE}
+
+### Transformation Histograms
+
+hist.arse = wells %>%
+  ggplot(aes(x = arsenic)) +
+  geom_histogram(aes(y = ..density..),binwidth = 1, fill = "white", color = "black") + 
+  geom_density(alpha=.2, fill="purple") +
+  xlab("Arsenic") +
+  ylab("Count") +
+  ggtitle("Histogram: Arsenic Level") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+
+
+hist.log.arse = wells %>%
+  ggplot(aes(x = log(arsenic))) +
+  geom_histogram(aes(y = ..density..), binwidth = .3, fill = "white", color = "black") + 
+  geom_density(alpha=.2, fill="purple") +
+  xlab("log(Arsenic)") +
+  ylab("Count") +
+  ggtitle("Histogram: log Arsenic Level") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+
+
+grid.arrange(hist.arse, hist.log.arse, nrow = 1)  
+
+hist.dist = wells %>%
+  ggplot(aes(x = dist)) +
+  geom_histogram(aes(y = ..density..), binwidth = 10, fill = "white", color = "black") + 
+  geom_density(alpha=.2, fill="purple") +
+  xlab("Distance") +
+  ylab("Count") +
+  ggtitle("Histogram: Distance") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+
+
+hist.log.dist = wells %>%
+  ggplot(aes(x = log(dist))) +
+  geom_histogram(aes(y = ..density..), binwidth = .3, fill = "white", color = "black") + 
+  geom_density(alpha=.2, fill="purple") +
+  xlab("log(Distance)") +
+  ylab("Count") +
+  ggtitle("Histogram: log Distance") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+
+grid.arrange(hist.dist, hist.log.dist, nrow = 1)
+
+
+```
+
+```{r, echo = FALSE, results = 'asis', warning = FALSE}
+
+### Regressions
+
+reg1 = glm(switch ~ arsenic + dist + assoc + educ, family = "binomial", data = wells)
+
+reg2 = glm(switch ~ log(arsenic) + log(dist) + assoc + educ, family = "binomial", data = wells)
+
+wells = wells %>%
+  mutate(grad = ifelse(educ >= 12, 1, 0))
+
+reg3 = glm(switch ~ arsenic + dist + assoc + grad, family = "binomial", data = wells)
+
+reg4 = glm(switch ~ arsenic + dist + assoc + educ + arsenic:educ, family = "binomial", data = wells)
+
+stargazer(reg1, reg2, reg3, reg4,
+          header = FALSE,
+          dep.var.labels = "log odds Switched Well",
+          title = "Regression Results",
+          covariate.labels = c("Arsenic",
+                               "Distance",
+                               "log(Arsenic)",
+                               "log(Distance)",
+                               "Active in Community",
+                               "Years Education",
+                               "Graduated Highschool = 1",
+                               "Arsenic * Education"))
+
+```
+
+
